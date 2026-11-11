@@ -2,3 +2,16 @@
 @media(max-width:1050px){.sidebar{width:200px}.main-content{width:calc(100% - 200px);padding:0 28px 50px}.hero{gap:20px}.game-layout{grid-template-columns:minmax(280px,1.3fr) minmax(190px,.8fr);gap:14px}.game-sidebar{padding:12px}}
 @media(max-width:760px){.sidebar{display:none}.main-content{width:100%;padding:0 17px 95px}.topbar{height:62px;margin-bottom:15px}.mobile-brand{display:flex;align-items:center;gap:8px;font:800 17px Manrope}.mobile-brand .brand-mark{width:29px;height:29px;font-size:18px}.user-chip{font-size:11px}.hero{grid-template-columns:1fr;padding:18px 0 32px;gap:22px}.hero h1{font-size:42px}.hero p{font-size:12px}.hero-board{display:none}.mode-grid{grid-template-columns:1fr;gap:9px}.mode-card{min-height:100px;padding:15px}.mode-icon{font-size:19px}.section-heading h2{font-size:18px}.page-heading h1{font-size:34px}.play-panel{padding:18px 13px}.time-options{gap:5px}.time-option strong{font-size:14px}.match-piece{font-size:55px}.game-layout{grid-template-columns:1fr;gap:12px}.chessboard-wrap{padding:0 17px 17px}.square{font-size:clamp(29px,9vw,48px)}.game-sidebar{min-height:270px}.move-list{max-height:150px}.player-bar{padding:8px 10px}.clock{font-size:15px}.mobile-nav{position:fixed;z-index:10;bottom:0;left:0;right:0;display:flex;justify-content:space-around;padding:8px 6px calc(8px + env(safe-area-inset-bottom));background:#151d17ed;backdrop-filter:blur(18px);border-top:1px solid var(--line)}.mobile-nav button{border:0;background:transparent;color:#85948a;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:9px;padding:3px 12px}.mobile-nav button span{font-size:19px}.mobile-nav button.active{color:var(--green)}.leader-row{grid-template-columns:28px 1fr 65px;gap:8px;padding:12px}.leader-row .leader-sub{display:none}.game-topline{margin-bottom:12px}.game-code{display:none}}
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{animation-duration:.01ms!important;transition-duration:.01ms!important;scroll-behavior:auto!important}}
+
+.friend-dialog{width:min(440px,calc(100% - 28px));max-width:none;border:1px solid var(--line);border-radius:16px;padding:0;background:#1a241d;color:#e8eee8;box-shadow:0 24px 90px #000b}
+.friend-dialog::backdrop{background:#080d09c9;backdrop-filter:blur(4px)}
+.friend-dialog-content{padding:25px}
+.friend-dialog-content h2{font:800 25px Manrope;margin:8px 0 18px}
+.friend-steps{list-style:none;counter-reset:friend;display:grid;gap:15px;padding:0;margin:0}
+.friend-steps li{counter-increment:friend;position:relative;padding-left:39px;display:grid;gap:4px}
+.friend-steps li::before{content:counter(friend);position:absolute;left:0;top:0;width:26px;height:26px;border-radius:8px;background:#304536;color:var(--green);display:grid;place-items:center;font-weight:800}
+.friend-steps strong{font-size:13px}
+.friend-steps span,.friend-note{font-size:11px;line-height:1.6;color:#9ba99e}
+.friend-note{padding:11px 13px;background:#202d24;border-radius:9px;margin:18px 0}
+.friend-dialog-actions{display:flex;justify-content:flex-end;gap:9px;flex-wrap:wrap}
+@media(max-width:760px){.friend-dialog-content{padding:20px}.friend-dialog-content h2{font-size:22px}}
