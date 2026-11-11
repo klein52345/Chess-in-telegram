@@ -18,6 +18,8 @@ let displayWhiteMs = 300000;
 let displayBlackMs = 300000;
 let clockLastTick = Date.now();
 let toastTimer = null;
+let pointerDragFrom = null;
+let suppressNextClick = false;
 
 function toast(message) {
   const el = $("toast"); el.textContent = message; el.classList.add("show");
@@ -174,7 +176,26 @@ function renderBoard() {
     html += '<button class="'+classes.join(" ")+'" data-square="'+square+'" role="gridcell" aria-label="'+square+'">'+(piece?'<span class="piece">'+pieceGlyph(piece)+'</span>':"")+'</button>';
   }));
   board.innerHTML = html;
-  board.querySelectorAll("[data-square]").forEach(b=>b.addEventListener("click",()=>squareClick(b.dataset.square)));
+  board.querySelectorAll("[data-square]").forEach(b=>b.addEventListener("click",()=>{
+    if (suppressNextClick) { suppressNextClick = false; return; }
+    squareClick(b.dataset.square);
+  }));
+  board.onpointerdown = (event) => {
+    const cell = event.target.closest("[data-square]");
+    if (!cell || !game || game.status !== "active") return;
+    const piece = chess.get(cell.dataset.square);
+    const myTurn = (chess.turn() === "w" && game.white === me.id) || (chess.turn() === "b" && game.black === me.id);
+    if (piece && piece.color === chess.turn() && myTurn) pointerDragFrom = cell.dataset.square;
+  };
+  board.onpointerup = async (event) => {
+    const from = pointerDragFrom;
+    pointerDragFrom = null;
+    const target = document.elementFromPoint(event.clientX, event.clientY)?.closest("[data-square]");
+    if (!from || !target || target.dataset.square === from) return;
+    suppressNextClick = true;
+    await squareClick(from);
+    await squareClick(target.dataset.square);
+  };
   const files = orientation==="white"?"abcdefgh":"hgfedcba";
   const ranks = orientation==="white"?"87654321":"12345678";
   $("game-view").querySelector(".top-files").textContent = files.split("").join("   ");
@@ -258,12 +279,19 @@ function bindEvents() {
   $("back-lobby").onclick=()=>{if(socket)socket.close();game=null;showView("home");};
   $("draw-button").onclick=drawAction;
   $("resign-button").onclick=resignAction;
-  $("copy-link").onclick=async()=>{const url=location.origin+location.pathname+"?game="+game.id;try{await navigator.clipboard.writeText(url);toast("Ссылка скопирована");}catch{toast(url);}};
-  const params=new URLSearchParams(location.search);if(params.has("game"))openGame(params.get("game"));
+  $("copy-link").onclick=async()=>{if(!game)return;const url=game.invite_url || (location.origin+location.pathname+"?game="+game.id);try{await navigator.clipboard.writeText(url);toast("Ссылка скопирована");}catch{toast(url);}};
 }
 async function boot() {
   renderMiniBoard();bindEvents();setInterval(tickClocks,250);
-  try { await authenticate();updateUser();await loadGames(); }
-  catch(e) { toast("Не удалось подключиться к серверу: "+e.message); $("home-games").innerHTML='<div class="empty-state">Сервер пока запускается. Обнови страницу через несколько секунд.</div>'; }
+  try {
+    await authenticate();
+    updateUser();
+    await loadGames();
+    const params = new URLSearchParams(location.search);
+    const startParam = tg?.initDataUnsafe?.start_param || "";
+    const roomFromStart = startParam.startsWith("game_") ? startParam.slice(5) : "";
+    const roomId = roomFromStart || params.get("game");
+    if (roomId) await openGame(roomId);
+  } catch(e) { toast("Не удалось подключиться к серверу: "+e.message); $("home-games").innerHTML='<div class="empty-state">Сервер пока запускается. Обнови страницу через несколько секунд.</div>'; }
 }
 boot();
