@@ -15,3 +15,12 @@
 .friend-note{padding:11px 13px;background:#202d24;border-radius:9px;margin:18px 0}
 .friend-dialog-actions{display:flex;justify-content:flex-end;gap:9px;flex-wrap:wrap}
 @media(max-width:760px){.friend-dialog-content{padding:20px}.friend-dialog-content h2{font-size:22px}}
+
+.time-options{grid-template-columns:repeat(4,minmax(0,1fr))}
+.time-option{min-width:0;min-height:66px;justify-content:center}
+.time-option strong{white-space:nowrap}
+.time-option.untimed{border-style:dashed}
+.time-options.locked .time-option:disabled{opacity:.58;cursor:not-allowed;transform:none}
+.time-options.locked .time-option.active{opacity:1;border-color:var(--green);box-shadow:0 0 0 1px #b8d8a044}
+.clock{white-space:nowrap}
+@media(max-width:760px){.time-options{grid-template-columns:repeat(2,minmax(0,1fr))}.time-option{min-height:58px}}
