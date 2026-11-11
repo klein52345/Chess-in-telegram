@@ -32,8 +32,13 @@ async function api(path, options = {}) {
 async function authenticate() {
   tg?.ready(); tg?.expand();
   if (tg?.initData) {
-    const data = await api("/api/auth/telegram", { method: "POST", body: JSON.stringify({ initData: tg.initData }) });
-    token = data.token; localStorage.setItem("chesstg_token", token); me = data.player; return;
+    try {
+      const data = await api("/api/auth/telegram", { method: "POST", body: JSON.stringify({ initData: tg.initData }) });
+      token = data.token; localStorage.setItem("chesstg_token", token); me = data.player; return;
+    } catch (error) {
+      if (!String(error.message).toLowerCase().includes("not configured")) throw error;
+      toast("Telegram-вход ещё не настроен — пока играешь как гость.");
+    }
   }
   if (token) {
     try { me = await api("/api/me"); return; } catch { localStorage.removeItem("chesstg_token"); token = null; }
