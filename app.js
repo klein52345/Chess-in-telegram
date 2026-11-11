@@ -81,7 +81,7 @@ function lockTimeOptions(locked) {
     option.disabled = locked;
     option.setAttribute("aria-disabled", String(locked));
   });
-  $("time-options")?.classList.toggle("locked", locked);
+  document.querySelectorAll(".time-options").forEach(options => options.classList.toggle("locked", locked));
 }
 async function loadGames(target = "home-games") {
   try {
@@ -249,7 +249,7 @@ async function startQueue() {
     const result = await api("/api/matchmaking",{method:"POST",body:JSON.stringify({initial_seconds:selectedTime.seconds,increment_seconds:selectedTime.increment})});
     if (result.status==="matched") { await openGame(result.game.id); return; }
     $("match-title").textContent = "Ищем соперника…";
-    $("match-description").textContent = "Не закрывай страницу — сообщим, когда найдём игрока.";
+    $("match-description").textContent = "Контроль времени зафиксирован на время поиска. Отмени поиск, чтобы изменить его.";
     button.textContent = "Отменить поиск";
     button.classList.remove("primary"); button.classList.add("secondary");
     queueTimer=setInterval(async()=>{
@@ -305,8 +305,9 @@ async function resignAction() {
 function bindEvents() {
   document.querySelectorAll("[data-view]").forEach(b=>b.addEventListener("click",()=>showView(b.dataset.view)));
   $("hero-quick").onclick=$("mode-random").onclick=()=>showView("play");
-  $("hero-create").onclick=()=>createGame();
-  $("mode-friend").onclick=()=>{ const dialog=$("friend-dialog"); if(dialog?.showModal) dialog.showModal(); else toast("Создай комнату кнопкой «Создать комнату» ниже."); };
+  const openFriendDialog = () => { const dialog=$("friend-dialog"); if(dialog?.showModal) dialog.showModal(); else toast("Открой страницу игры и создай комнату."); };
+  $("hero-create").onclick=openFriendDialog;
+  $("mode-friend").onclick=openFriendDialog;
   $("friend-close").onclick=()=> $("friend-dialog").close();
   $("friend-create").onclick=()=>{ $("friend-dialog").close(); createGame(); };
   $("friend-dialog").addEventListener("click",event=>{ if(event.target===$("friend-dialog")) $("friend-dialog").close(); });
