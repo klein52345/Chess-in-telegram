@@ -71,14 +71,25 @@ function renderMiniBoard() {
   $("mini-board").innerHTML = pieces.map((p,i)=>'<div class="mini-square '+(((Math.floor(i/8)+i%8)%2)?"dark":"light")+'">'+p+'</div>').join("");
 }
 function timeLabel(ms) { const sec = Math.max(0, Math.ceil(ms/1000)); return String(Math.floor(sec/60)).padStart(2,"0")+":"+String(sec%60).padStart(2,"0"); }
-function gameClock(ms, active) { return timeLabel(ms); }
+function gameClock(ms, active) { return game?.initial_ms === 0 ? "Без времени" : timeLabel(ms); }
+function timeControlLabel(initialMs, incrementMs) {
+  if (initialMs <= 0) return "Без времени";
+  return `${Math.floor(initialMs / 60000)} + ${Math.floor(incrementMs / 1000)} сек`;
+}
+function lockTimeOptions(locked) {
+  document.querySelectorAll(".time-option").forEach(option => {
+    option.disabled = locked;
+    option.setAttribute("aria-disabled", String(locked));
+  });
+  $("time-options")?.classList.toggle("locked", locked);
+}
 async function loadGames(target = "home-games") {
   try {
     const rows = await api("/api/games?status=waiting");
     const el = $(target);
     if (!rows.length) { el.innerHTML = '<div class="empty-state">Пока никто не ждёт соперника. Создай первую партию!</div>'; if ($("games-count")) $("games-count").textContent = "0 открытых партий"; return; }
     if ($("games-count")) $("games-count").textContent = rows.length + " открытых партий";
-    el.innerHTML = rows.map(g => '<div class="game-row"><div class="game-row-icon">♟</div><div class="game-row-info"><strong>Игрок '+(g.white || g.black || "Guest").slice(0,8)+'</strong><span>'+Math.round(g.initial_ms/60000)+' мин · '+Math.round(g.increment_ms/1000)+' сек добавление</span></div><button class="button secondary" data-join="'+g.id+'">Играть</button></div>').join("");
+    el.innerHTML = rows.map(g => '<div class="game-row"><div class="game-row-icon">♟</div><div class="game-row-info"><strong>Игрок '+(g.white || g.black || "Guest").slice(0,8)+'</strong><span>'+escapeHtml(timeControlLabel(g.initial_ms, g.increment_ms))</span></div><button class="button secondary" data-join="'+g.id+'">Играть</button></div>').join("");
     el.querySelectorAll("[data-join]").forEach(b => b.addEventListener("click",()=>joinGame(b.dataset.join)));
   } catch (e) { $(target).innerHTML = '<div class="empty-state">Не удалось загрузить партии: '+escapeHtml(e.message)+'</div>'; }
 }
@@ -147,7 +158,7 @@ function renderGame() {
   renderBoard();
 }
 function tickClocks() {
-  if (!game || game.status !== "active") return;
+  if (!game || game.status !== "active" || game.initial_ms === 0) return;
   const now = Date.now();
   const elapsed = now - clockLastTick;
   clockLastTick = now;
@@ -229,6 +240,7 @@ async function squareClick(square) {
 async function startQueue() {
   if (queueRequestPending || queueTimer) return;
   queueRequestPending = true;
+  lockTimeOptions(true);
   const button = $("match-button");
   button.disabled = true;
   button.textContent = "Подключаемся…";
@@ -255,6 +267,7 @@ async function startQueue() {
   } finally {
     queueRequestPending = false;
     button.disabled = false;
+    lockTimeOptions(Boolean(queueTimer));
   }
 }
 function stopQueueTimer() { if(queueTimer){clearInterval(queueTimer);queueTimer=null;} }
@@ -269,6 +282,7 @@ async function cancelQueue(showError = true) {
   finally {
     queueRequestPending = false;
     button.disabled = false;
+    lockTimeOptions(false);
     $("match-title").textContent="Готов к партии?";
     $("match-description").textContent="Нажми кнопку — поиск начнётся сразу.";
     button.innerHTML='Найти соперника <span>→</span>';
@@ -300,10 +314,11 @@ function bindEvents() {
   $("refresh-games").onclick=()=>loadGames();
   $("games-refresh").onclick=()=>loadGames("games-list");
   document.querySelectorAll(".time-option").forEach(b=>b.addEventListener("click",()=>{
-    document.querySelectorAll(".time-option").forEach(x=>x.classList.remove("active"));b.classList.add("active");
+    document.querySelectorAll(".time-option").forEach(x=>{x.classList.remove("active");x.setAttribute("aria-pressed","false");});b.classList.add("active");b.setAttribute("aria-pressed","true");
     selectedTime={seconds:Number(b.dataset.time),increment:Number(b.dataset.inc)};
   }));
   $("match-button").addEventListener("click",()=>{ if (queueRequestPending) return; if (queueTimer) cancelQueue(); else startQueue(); });
+  lockTimeOptions(false);
   $("back-lobby").onclick=()=>{if(socket)socket.close();game=null;showView("home");};
   $("draw-button").onclick=drawAction;
   $("resign-button").onclick=resignAction;
