@@ -92,6 +92,7 @@ async function joinGame(id) {
 async function openGame(id) {
   try {
     game = await api("/api/games/"+id);
+    if (game.status === "waiting" && game.white !== me.id && game.black !== me.id) game = await api("/api/games/"+id+"/join", { method:"POST" });
     chess = new Chess(game.fen === "start" ? undefined : game.fen);
     orientation = game.white === me.id ? "white" : "black";
     selected = null; legalTargets = [];
