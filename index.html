@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#101411">
+  <meta name="description" content="ChessTG — быстрые шахматные партии с друзьями и случайными соперниками.">
+  <title>ChessTG — шахматы онлайн</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <script src="config.js"></script>
+  <script type="module" src="app.js"></script>
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <a class="brand" href="#" aria-label="ChessTG home"><span class="brand-mark">♞</span><span>chess<span class="brand-light">tg</span></span></a>
+      <div class="side-label">ИГРА</div>
+      <button class="nav-item active" data-view="home"><span>⌂</span> Главная</button>
+      <button class="nav-item" data-view="play"><span>♟</span> Быстрая игра</button>
+      <button class="nav-item" data-view="games"><span>▦</span> Открытые партии</button>
+      <button class="nav-item" data-view="rating"><span>♜</span> Рейтинг</button>
+      <div class="sidebar-bottom">
+        <div class="online-dot"></div><span>ChessTG beta</span><span class="version">v1.0</span>
+      </div>
+    </aside>
+
+    <main class="main-content">
+      <header class="topbar">
+        <div class="mobile-brand"><span class="brand-mark">♞</span> ChessTG</div>
+        <div class="topbar-spacer"></div>
+        <div class="user-chip"><span class="avatar" id="avatar">G</span><span id="username">Гость</span><span class="rating-pill" id="rating">1200</span></div>
+      </header>
+
+      <section id="home-view" class="view active">
+        <div class="hero">
+          <div class="hero-copy">
+            <div class="eyebrow"><span class="pulse"></span> ШАХМАТЫ БЕЗ ЛИШНЕГО</div>
+            <h1>Твой следующий<br><span>сильный ход.</span></h1>
+            <p>Играй с друзьями, находи случайных соперников или просто тренируйся. Прямо здесь — в браузере или Telegram.</p>
+            <div class="hero-actions">
+              <button class="button primary large" id="hero-quick">Найти соперника <span>→</span></button>
+              <button class="button ghost large" id="hero-create">Создать партию</button>
+            </div>
+          </div>
+          <div class="hero-board" aria-hidden="true">
+            <div class="mini-board" id="mini-board"></div>
+            <div class="board-glow"></div>
+          </div>
+        </div>
+
+        <div class="section-heading"><div><div class="eyebrow">НАЧНИ ИГРУ</div><h2>Выбирай свой режим</h2></div></div>
+        <div class="mode-grid">
+          <button class="mode-card featured" id="mode-random"><span class="mode-icon">⚔</span><span class="mode-title">Случайный соперник</span><span class="mode-desc">Подбор игрока онлайн</span><span class="mode-arrow">↗</span></button>
+          <button class="mode-card" id="mode-friend"><span class="mode-icon">♙</span><span class="mode-title">С другом</span><span class="mode-desc">Создай комнату и отправь ссылку</span><span class="mode-arrow">↗</span></button>
+          <button class="mode-card" id="mode-open"><span class="mode-icon">▤</span><span class="mode-title">Открытые партии</span><span class="mode-desc">Присоединяйся к другим игрокам</span><span class="mode-arrow">↗</span></button>
+        </div>
+        <div class="section-heading compact"><div><div class="eyebrow">СЕЙЧАС</div><h2>Открытые вызовы</h2></div><button class="text-button" id="refresh-games">Обновить ↻</button></div>
+        <div class="game-list" id="home-games"><div class="empty-state">Загружаем открытые партии…</div></div>
+      </section>
+
+      <section id="play-view" class="view">
+        <div class="page-heading"><div class="eyebrow">НОВАЯ ПАРТИЯ</div><h1>Найди соперника</h1><p>Выбери контроль времени — мы подберём случайного игрока.</p></div>
+        <div class="play-panel">
+          <div class="time-options" id="time-options">
+            <button class="time-option active" data-time="180" data-inc="0"><strong>3 + 0</strong><span>Блиц</span></button>
+            <button class="time-option" data-time="300" data-inc="0"><strong>5 + 0</strong><span>Блиц</span></button>
+            <button class="time-option" data-time="600" data-inc="5"><strong>10 + 5</strong><span>Рапид</span></button>
+            <button class="time-option" data-time="900" data-inc="10"><strong>15 + 10</strong><span>Рапид</span></button>
+          </div>
+          <div class="match-illustration"><div class="match-piece">♘</div><div class="match-vs">VS</div><div class="match-piece muted-piece">♞</div></div>
+          <h2 id="match-title">Готов к партии?</h2>
+          <p id="match-description">Нажми кнопку — поиск начнётся сразу.</p>
+          <button class="button primary large match-button" id="match-button">Найти соперника <span>→</span></button>
+          <div class="match-footnote"><span class="online-dot"></span> Подбор работает круглосуточно, даже если сейчас мало игроков.</div>
+        </div>
+      </section>
+
+      <section id="games-view" class="view">
+        <div class="page-heading"><div class="eyebrow">ЛОББИ</div><h1>Открытые партии</h1><p>Присоединяйся к игроку, который уже ждёт соперника.</p></div>
+        <div class="section-toolbar"><span id="games-count">Загрузка…</span><button class="button secondary" id="games-refresh">↻ Обновить</button></div>
+        <div class="game-list" id="games-list"></div>
+      </section>
+
+      <section id="rating-view" class="view">
+        <div class="page-heading"><div class="eyebrow">СООБЩЕСТВО</div><h1>Рейтинг игроков</h1><p>Таблица лидеров ChessTG.</p></div>
+        <div class="leaderboard" id="leaderboard"><div class="empty-state">Загрузка рейтинга…</div></div>
+      </section>
+
+      <section id="game-view" class="view game-view">
+        <div class="game-topline"><button class="text-button" id="back-lobby">← Назад</button><span class="game-code" id="game-code"></span><button class="text-button" id="copy-link">Скопировать ссылку ↗</button></div>
+        <div class="game-layout">
+          <div class="board-column">
+            <div class="player-bar"><span class="avatar opponent-avatar">♟</span><div class="player-meta"><strong id="opponent-name">Ожидание соперника</strong><span id="opponent-rating">Соперник</span></div><div class="clock" id="opponent-clock">05:00</div></div>
+            <div class="chessboard-wrap"><div class="coordinates files top-files"></div><div class="coordinates ranks left-ranks"></div><div class="chessboard" id="chessboard" role="grid" aria-label="Шахматная доска"></div><div class="coordinates files bottom-files"></div><div class="coordinates ranks right-ranks"></div></div>
+            <div class="player-bar self-bar"><span class="avatar self-avatar">♙</span><div class="player-meta"><strong id="self-name">Ты</strong><span id="self-rating">1200</span></div><div class="clock" id="self-clock">05:00</div></div>
+          </div>
+          <aside class="game-sidebar">
+            <div class="game-status"><span class="status-dot"></span><span id="game-status">Партия</span></div>
+            <div class="moves-title">ХОДЫ <span id="move-count">0</span></div>
+            <div class="move-list" id="move-list"><div class="move-empty">Ходы появятся здесь</div></div>
+            <div class="game-controls">
+              <button class="button secondary full" id="draw-button">Предложить ничью</button>
+              <button class="button danger-ghost full" id="resign-button">Сдаться</button>
+            </div>
+            <div class="game-hint" id="game-hint">Твой ход появится здесь.</div>
+          </aside>
+        </div>
+      </section>
+
+      <div class="toast" id="toast" role="status"></div>
+    </main>
+  </div>
+  <nav class="mobile-nav">
+    <button class="active" data-view="home"><span>⌂</span>Главная</button>
+    <button data-view="play"><span>♟</span>Играть</button>
+    <button data-view="games"><span>▦</span>Партии</button>
+    <button data-view="rating"><span>♜</span>Рейтинг</button>
+  </nav>
+</body>
+</html>
