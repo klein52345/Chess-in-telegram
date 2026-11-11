@@ -24,3 +24,7 @@
 .time-options.locked .time-option.active{opacity:1;border-color:var(--green);box-shadow:0 0 0 1px #b8d8a044}
 .clock{white-space:nowrap}
 @media(max-width:760px){.time-options{grid-template-columns:repeat(2,minmax(0,1fr))}.time-option{min-height:58px}}
+
+.friend-time-controls{margin:0 0 17px;padding:13px;background:#202d24;border:1px solid var(--line);border-radius:10px}
+.friend-time-options{grid-template-columns:repeat(2,minmax(0,1fr));margin-top:10px}
+.friend-time-options .time-option{min-height:56px;padding:8px 4px}
