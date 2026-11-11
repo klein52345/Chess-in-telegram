@@ -1,6 +1,6 @@
 import { Chess } from "https://cdn.jsdelivr.net/npm/chess.js@1.4.0/dist/esm/chess.js";
 
-const API = (window.CHESSTG_CONFIG?.apiBase || "").replace(/\/$/, "");
+const API = (window.CHESSTG_CONFIG?.apiBase || "https://cocktail-mixer.onrender.com").replace(/\/$/, "");
 const tg = window.Telegram?.WebApp;
 const $ = (id) => document.getElementById(id);
 let token = localStorage.getItem("chesstg_token");
