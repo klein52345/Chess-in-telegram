@@ -14,6 +14,9 @@ let socket = null;
 let selectedTime = { seconds: 180, increment: 0 };
 let queueTimer = null;
 let queueStartedAt = 0;
+let displayWhiteMs = 300000;
+let displayBlackMs = 300000;
+let clockLastTick = Date.now();
 let toastTimer = null;
 
 function toast(message) {
@@ -53,7 +56,7 @@ function showView(name) {
   document.querySelectorAll("[data-view]").forEach(b => b.classList.toggle("active", b.dataset.view === name));
   if (name === "games") loadGames();
   if (name === "rating") loadLeaderboard();
-  if (name === "play") stopQueueTimer();
+  if (queueTimer && name !== "play") cancelQueue();
 }
 function updateUser() {
   $("username").textContent = me?.name || "Гость";
@@ -99,6 +102,7 @@ async function openGame(id) {
     game = await api("/api/games/"+id);
     if (game.status === "waiting" && game.white !== me.id && game.black !== me.id) game = await api("/api/games/"+id+"/join", { method:"POST" });
     chess = new Chess(game.fen === "start" ? undefined : game.fen);
+    displayWhiteMs = game.white_ms; displayBlackMs = game.black_ms; clockLastTick = Date.now();
     orientation = game.white === me.id ? "white" : "black";
     selected = null; legalTargets = [];
     showView("game"); renderGame(); connectSocket(id);
@@ -119,6 +123,7 @@ function connectSocket(id) {
 function applyGame(g) {
   game = g;
   chess = new Chess(g.fen === "start" ? undefined : g.fen);
+  displayWhiteMs = g.white_ms; displayBlackMs = g.black_ms; clockLastTick = Date.now();
   selected = null; legalTargets = []; renderGame();
 }
 function renderGame() {
@@ -129,14 +134,25 @@ function renderGame() {
   $("self-rating").textContent = me.rating || 1200;
   $("opponent-name").textContent = opponent ? "Игрок "+opponent.slice(0,8) : "Ожидание соперника";
   $("opponent-rating").textContent = opponent ? "Соперник" : "Пригласи друга по ссылке";
-  $("self-clock").textContent = gameClock(isWhite ? game.white_ms : game.black_ms);
-  $("opponent-clock").textContent = gameClock(isWhite ? game.black_ms : game.white_ms);
+  $("self-clock").textContent = gameClock(isWhite ? displayWhiteMs : displayBlackMs);
+  $("opponent-clock").textContent = gameClock(isWhite ? displayBlackMs : displayWhiteMs);
   $("game-status").textContent = game.status === "waiting" ? "Ожидание соперника" : game.status === "finished" ? "Партия завершена · "+(game.result || "") : chess.isCheck() ? "Шах!" : chess.turn() === (isWhite ? "w" : "b") ? "Твой ход" : "Ход соперника";
   $("game-hint").textContent = game.status === "waiting" ? "Отправь ссылку другу или подожди, пока кто-нибудь присоединится." : game.status === "finished" ? "Результат: "+game.result : chess.turn() === (isWhite ? "w" : "b") ? "Выбери фигуру и клетку назначения." : "Сейчас ход соперника.";
   $("move-count").textContent = game.moves.length;
   const moveList = $("move-list");
   moveList.innerHTML = game.moves.length ? game.moves.map((m,i)=>'<div class="move-cell"><span class="move-number">'+(Math.floor(i/2)+1)+(i%2?".":"…")+'</span>'+escapeHtml(m.san)+'</div>').join("") : '<div class="move-empty">Ходы появятся здесь</div>';
   renderBoard();
+}
+function tickClocks() {
+  if (!game || game.status !== "active") return;
+  const now = Date.now();
+  const elapsed = now - clockLastTick;
+  clockLastTick = now;
+  if (chess.turn() === "w") displayWhiteMs = Math.max(0, displayWhiteMs - elapsed);
+  else displayBlackMs = Math.max(0, displayBlackMs - elapsed);
+  const whiteMe = game.white === me.id;
+  $("self-clock").textContent = timeLabel(whiteMe ? displayWhiteMs : displayBlackMs);
+  $("opponent-clock").textContent = timeLabel(whiteMe ? displayBlackMs : displayWhiteMs);
 }
 function renderBoard() {
   const board = $("chessboard"); if (!board) return;
@@ -246,7 +262,7 @@ function bindEvents() {
   const params=new URLSearchParams(location.search);if(params.has("game"))openGame(params.get("game"));
 }
 async function boot() {
-  renderMiniBoard();bindEvents();
+  renderMiniBoard();bindEvents();setInterval(tickClocks,250);
   try { await authenticate();updateUser();await loadGames(); }
   catch(e) { toast("Не удалось подключиться к серверу: "+e.message); $("home-games").innerHTML='<div class="empty-state">Сервер пока запускается. Обнови страницу через несколько секунд.</div>'; }
 }
