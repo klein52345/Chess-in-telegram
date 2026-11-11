@@ -14,6 +14,7 @@ let socket = null;
 let selectedTime = { seconds: 180, increment: 0 };
 let queueTimer = null;
 let queueStartedAt = 0;
+let queueRequestPending = false;
 let displayWhiteMs = 300000;
 let displayBlackMs = 300000;
 let clockLastTick = Date.now();
@@ -226,30 +227,53 @@ async function squareClick(square) {
   } else { selected=null; legalTargets=[]; renderBoard(); }
 }
 async function startQueue() {
+  if (queueRequestPending || queueTimer) return;
+  queueRequestPending = true;
+  const button = $("match-button");
+  button.disabled = true;
+  button.textContent = "Подключаемся…";
   try {
     queueStartedAt = Date.now()/1000;
     const result = await api("/api/matchmaking",{method:"POST",body:JSON.stringify({initial_seconds:selectedTime.seconds,increment_seconds:selectedTime.increment})});
     if (result.status==="matched") { await openGame(result.game.id); return; }
     $("match-title").textContent = "Ищем соперника…";
-    $("match-description").textContent = "Не закрывай страницу — мы сообщим, когда найдём игрока.";
-    $("match-button").textContent = "Отменить поиск";
-    $("match-button").classList.remove("primary"); $("match-button").classList.add("secondary");
+    $("match-description").textContent = "Не закрывай страницу — сообщим, когда найдём игрока.";
+    button.textContent = "Отменить поиск";
+    button.classList.remove("primary"); button.classList.add("secondary");
     queueTimer=setInterval(async()=>{
       try {
         const status=await api("/api/matchmaking?since="+queueStartedAt);
         if(status.status==="matched"){stopQueueTimer();toast("Соперник найден!");await openGame(status.game.id);}
-      }catch(e){stopQueueTimer();toast(e.message);}
+      }catch(e){stopQueueTimer();toast(e.message);await cancelQueue(false);}
     },2200);
-  } catch(e) { toast(e.message); }
+  } catch(e) {
+    toast(e.message);
+    $("match-title").textContent = "Готов к партии?";
+    $("match-description").textContent = "Нажми кнопку — поиск начнётся сразу.";
+    button.innerHTML = 'Найти соперника <span>→</span>';
+    button.classList.add("primary"); button.classList.remove("secondary");
+  } finally {
+    queueRequestPending = false;
+    button.disabled = false;
+  }
 }
 function stopQueueTimer() { if(queueTimer){clearInterval(queueTimer);queueTimer=null;} }
-async function cancelQueue() {
+async function cancelQueue(showError = true) {
+  if (queueRequestPending) return;
+  queueRequestPending = true;
+  const button = $("match-button");
+  button.disabled = true;
   stopQueueTimer();
-  try { await api("/api/matchmaking",{method:"DELETE"}); } catch {}
-  $("match-title").textContent="Готов к партии?";
-  $("match-description").textContent="Нажми кнопку — поиск начнётся сразу.";
-  $("match-button").innerHTML='Найти соперника <span>→</span>';
-  $("match-button").classList.add("primary"); $("match-button").classList.remove("secondary");
+  try { await api("/api/matchmaking",{method:"DELETE"}); }
+  catch (e) { if (showError) toast(e.message); }
+  finally {
+    queueRequestPending = false;
+    button.disabled = false;
+    $("match-title").textContent="Готов к партии?";
+    $("match-description").textContent="Нажми кнопку — поиск начнётся сразу.";
+    button.innerHTML='Найти соперника <span>→</span>';
+    button.classList.add("primary"); button.classList.remove("secondary");
+  }
 }
 async function drawAction() {
   if(!game)return;
@@ -275,7 +299,7 @@ function bindEvents() {
     document.querySelectorAll(".time-option").forEach(x=>x.classList.remove("active"));b.classList.add("active");
     selectedTime={seconds:Number(b.dataset.time),increment:Number(b.dataset.inc)};
   }));
-  $("match-button").onclick=()=>queueTimer?cancelQueue():startQueue();
+  $("match-button").addEventListener("click",()=>{ if (queueRequestPending) return; if (queueTimer) cancelQueue(); else startQueue(); });
   $("back-lobby").onclick=()=>{if(socket)socket.close();game=null;showView("home");};
   $("draw-button").onclick=drawAction;
   $("resign-button").onclick=resignAction;
@@ -295,7 +319,7 @@ async function boot() {
       await openGame(roomId);
     } else {
       const action = params.get("action");
-      if (action === "find") { showView("play"); await startQueue(); }
+      if (action === "find") showView("play");
       else if (action === "create") await createGame();
       else if (action === "rooms") showView("games");
       else if (action === "rating") showView("rating");
