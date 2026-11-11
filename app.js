@@ -19,7 +19,7 @@ let displayBlackMs = 300000;
 let clockLastTick = Date.now();
 let toastTimer = null;
 let pointerDragFrom = null;
-let suppressNextClick = false;
+let suppressClicksUntil = 0;
 
 function toast(message) {
   const el = $("toast"); el.textContent = message; el.classList.add("show");
@@ -177,7 +177,7 @@ function renderBoard() {
   }));
   board.innerHTML = html;
   board.querySelectorAll("[data-square]").forEach(b=>b.addEventListener("click",()=>{
-    if (suppressNextClick) { suppressNextClick = false; return; }
+    if (Date.now() < suppressClicksUntil) return;
     squareClick(b.dataset.square);
   }));
   board.onpointerdown = (event) => {
@@ -192,7 +192,7 @@ function renderBoard() {
     pointerDragFrom = null;
     const target = document.elementFromPoint(event.clientX, event.clientY)?.closest("[data-square]");
     if (!from || !target || target.dataset.square === from) return;
-    suppressNextClick = true;
+    suppressClicksUntil = Date.now() + 500;
     await squareClick(from);
     await squareClick(target.dataset.square);
   };
