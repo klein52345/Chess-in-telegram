@@ -111,6 +111,22 @@
         </div>
       </section>
 
+      <dialog class="friend-dialog" id="friend-dialog" aria-labelledby="friend-dialog-title">
+        <div class="friend-dialog-content">
+          <div class="eyebrow">ПАРТИЯ С ДРУГОМ</div>
+          <h2 id="friend-dialog-title">Как сыграть вместе</h2>
+          <ol class="friend-steps">
+            <li><strong>Создай комнату.</strong><span>Выбери контроль времени — откроется новая партия.</span></li>
+            <li><strong>Скопируй приглашение.</strong><span>В самой партии нажми «Скопировать ссылку».</span></li>
+            <li><strong>Отправь ссылку другу.</strong><span>Друг открывает её, нажимает «Присоединиться» — и вы играете.</span></li>
+          </ol>
+          <p class="friend-note">Аккаунт Telegram не обязателен: можно играть гостем в браузере. Если ссылка открылась в Telegram, просто запусти игру через бота.</p>
+          <div class="friend-dialog-actions">
+            <button class="button ghost" id="friend-close" type="button">Пока нет</button>
+            <button class="button primary" id="friend-create" type="button">Создать комнату →</button>
+          </div>
+        </div>
+      </dialog>
       <div class="toast" id="toast" role="status"></div>
     </main>
   </div>
