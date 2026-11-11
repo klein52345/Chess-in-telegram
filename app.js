@@ -42,8 +42,8 @@ async function authenticate() {
       const data = await api("/api/auth/telegram", { method: "POST", body: JSON.stringify({ initData: tg.initData }) });
       token = data.token; localStorage.setItem("chesstg_token", token); me = data.player; return;
     } catch (error) {
-      if (!String(error.message).toLowerCase().includes("not configured")) throw error;
-      toast("Telegram-вход ещё не настроен — пока играешь как гость.");
+      // A Telegram signature/configuration problem must not block guest play.
+      toast("Не удалось войти через Telegram. Продолжаем как гость.");
     }
   }
   if (token) {
@@ -291,7 +291,11 @@ async function resignAction() {
 function bindEvents() {
   document.querySelectorAll("[data-view]").forEach(b=>b.addEventListener("click",()=>showView(b.dataset.view)));
   $("hero-quick").onclick=$("mode-random").onclick=()=>showView("play");
-  $("hero-create").onclick=$("mode-friend").onclick=()=>createGame();
+  $("hero-create").onclick=()=>createGame();
+  $("mode-friend").onclick=()=>{ const dialog=$("friend-dialog"); if(dialog?.showModal) dialog.showModal(); else toast("Создай комнату кнопкой «Создать комнату» ниже."); };
+  $("friend-close").onclick=()=> $("friend-dialog").close();
+  $("friend-create").onclick=()=>{ $("friend-dialog").close(); createGame(); };
+  $("friend-dialog").addEventListener("click",event=>{ if(event.target===$("friend-dialog")) $("friend-dialog").close(); });
   $("mode-open").onclick=()=>showView("games");
   $("refresh-games").onclick=()=>loadGames();
   $("games-refresh").onclick=()=>loadGames("games-list");
