@@ -291,7 +291,15 @@ async function boot() {
     const startParam = tg?.initDataUnsafe?.start_param || "";
     const roomFromStart = startParam.startsWith("game_") ? startParam.slice(5) : "";
     const roomId = roomFromStart || params.get("game");
-    if (roomId) await openGame(roomId);
+    if (roomId) {
+      await openGame(roomId);
+    } else {
+      const action = params.get("action");
+      if (action === "find") { showView("play"); await startQueue(); }
+      else if (action === "create") await createGame();
+      else if (action === "rooms") showView("games");
+      else if (action === "rating") showView("rating");
+    }
   } catch(e) { toast("Не удалось подключиться к серверу: "+e.message); $("home-games").innerHTML='<div class="empty-state">Сервер пока запускается. Обнови страницу через несколько секунд.</div>'; }
 }
 boot();
