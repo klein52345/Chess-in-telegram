@@ -65,11 +65,15 @@
       <section id="play-view" class="view">
         <div class="page-heading"><div class="eyebrow">НОВАЯ ПАРТИЯ</div><h1>Найди соперника</h1><p>Выбери контроль времени — мы подберём случайного игрока.</p></div>
         <div class="play-panel">
-          <div class="time-options" id="time-options">
-            <button class="time-option active" data-time="180" data-inc="0"><strong>3 + 0</strong><span>Блиц</span></button>
-            <button class="time-option" data-time="300" data-inc="0"><strong>5 + 0</strong><span>Блиц</span></button>
-            <button class="time-option" data-time="600" data-inc="5"><strong>10 + 5</strong><span>Рапид</span></button>
-            <button class="time-option" data-time="900" data-inc="10"><strong>15 + 10</strong><span>Рапид</span></button>
+          <div class="time-options" id="time-options" aria-label="Контроль времени">
+            <button class="time-option" type="button" data-time="60" data-inc="0" aria-pressed="false"><strong>1 + 0</strong><span>Пуля</span></button>
+            <button class="time-option active" type="button" data-time="180" data-inc="0" aria-pressed="true"><strong>3 + 0</strong><span>Блиц</span></button>
+            <button class="time-option" type="button" data-time="300" data-inc="0" aria-pressed="false"><strong>5 + 0</strong><span>Блиц</span></button>
+            <button class="time-option" type="button" data-time="600" data-inc="0" aria-pressed="false"><strong>10 + 0</strong><span>Рапид</span></button>
+            <button class="time-option" type="button" data-time="600" data-inc="5" aria-pressed="false"><strong>10 + 5</strong><span>Рапид</span></button>
+            <button class="time-option" type="button" data-time="900" data-inc="10" aria-pressed="false"><strong>15 + 10</strong><span>Рапид</span></button>
+            <button class="time-option" type="button" data-time="1800" data-inc="0" aria-pressed="false"><strong>30 + 0</strong><span>Длинная</span></button>
+            <button class="time-option untimed" type="button" data-time="0" data-inc="0" aria-pressed="false"><strong>∞ Без времени</strong><span>Без часов</span></button>
           </div>
           <div class="match-illustration"><div class="match-piece">♘</div><div class="match-vs">VS</div><div class="match-piece muted-piece">♞</div></div>
           <h2 id="match-title">Готов к партии?</h2>
