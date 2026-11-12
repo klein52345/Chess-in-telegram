@@ -132,7 +132,7 @@ async function loadProfile() {
       const draw = g.result === "1/2-1/2";
       const outcome = draw ? "Ничья" : won ? "Победа" : "Поражение";
       const date = g.created_at ? new Date(g.created_at * 1000).toLocaleDateString("ru-RU") : "";
-      const opponentLabel = opponent ? "Игрок " + opponent.slice(0, 8) : "Соперник";
+      const opponentLabel = g.opponent_name || (opponent ? "Игрок " + opponent.slice(0, 8) : "Соперник");
       return '<div class="history-row"><div class="history-main"><strong>'+escapeHtml(opponentLabel)+'</strong><span>'+escapeHtml(timeControlLabel(g.initial_ms, g.increment_ms))+' · '+escapeHtml(date)+'</span></div><span class="history-result '+(draw?"draw":won?"win":"loss")+'">'+outcome+'</span><button class="button secondary history-open" data-history-game="'+escapeHtml(g.id)+'">Открыть</button></div>';
     }).join("");
     history.querySelectorAll("[data-history-game]").forEach(button => {
