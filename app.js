@@ -11,6 +11,8 @@ let selected = null;
 let legalTargets = [];
 let orientation = "white";
 let socket = null;
+let socketGeneration = 0;
+let socketRetryDelay = 1000;
 let selectedTime = { seconds: 180, increment: 0 };
 let queueTimer = null;
 let queueStartedAt = 0;
@@ -124,15 +126,35 @@ async function openGame(id) {
   } catch(e) { toast(e.message); }
 }
 function connectSocket(id) {
-  if (socket) socket.close();
+  const generation = ++socketGeneration;
+  if (socket) {
+    socket.onclose = null;
+    socket.close();
+  }
   const url = API.replace(/^http/,"ws")+"/ws/games/"+id+"?token="+encodeURIComponent(token);
-  socket = new WebSocket(url);
-  socket.onmessage = event => {
-    const msg = JSON.parse(event.data);
-    if (msg.game) applyGame(msg.game);
-    if (msg.type === "matched" && msg.game) { toast("Соперник найден!"); openGame(msg.game.id); }
+  const connection = new WebSocket(url);
+  socket = connection;
+  connection.onopen = () => {
+    if (generation === socketGeneration) socketRetryDelay = 1000;
   };
-  socket.onclose = () => {};
+  connection.onmessage = event => {
+    if (generation !== socketGeneration) return;
+    try {
+      const msg = JSON.parse(event.data);
+      if (msg.game) applyGame(msg.game);
+      if (msg.type === "matched" && msg.game) { toast("Соперник найден!"); openGame(msg.game.id); }
+    } catch (error) {
+      console.error("Invalid ChessTG WebSocket message", error);
+    }
+  };
+  connection.onclose = () => {
+    if (generation !== socketGeneration || !game || game.id !== id || game.status !== "active") return;
+    const delay = socketRetryDelay;
+    socketRetryDelay = Math.min(socketRetryDelay * 2, 15000);
+    window.setTimeout(() => {
+      if (generation === socketGeneration && game?.id === id && game.status === "active") connectSocket(id);
+    }, delay);
+  };
 }
 function applyGame(g) {
   game = g;
@@ -155,6 +177,13 @@ function renderGame() {
   $("move-count").textContent = game.moves.length;
   const moveList = $("move-list");
   moveList.innerHTML = game.moves.length ? game.moves.map((m,i)=>'<div class="move-cell"><span class="move-number">'+(Math.floor(i/2)+1)+(i%2?".":"…")+'</span>'+escapeHtml(m.san)+'</div>').join("") : '<div class="move-empty">Ходы появятся здесь</div>';
+  const active = game.status === "active";
+  $("draw-button").disabled = !active || game.draw_offer_by === me.id;
+  $("draw-button").textContent = game.draw_offer_by && game.draw_offer_by !== me.id
+    ? "Принять ничью"
+    : game.draw_offer_by === me.id ? "Ожидаем ответ на ничью" : "Предложить ничью";
+  $("claim-draw-button").disabled = !active;
+  $("resign-button").disabled = !active;
   renderBoard();
 }
 function tickClocks() {
@@ -297,8 +326,18 @@ async function drawAction() {
     applyGame(updated);toast(accepted?"Ничья принята":"Предложение ничьей отправлено");
   }catch(e){toast(e.message);}
 }
+async function claimDrawAction() {
+  if (!game || game.status !== "active") return;
+  try {
+    const updated = await api("/api/games/"+game.id+"/claim-draw", {method:"POST"});
+    applyGame(updated);
+    toast("Ничья заявлена по правилам");
+  } catch (e) {
+    toast(e.message);
+  }
+}
 async function resignAction() {
-  if(!game || !confirm("Точно сдаться?"))return;
+  if(!game || game.status !== "active" || !confirm("Точно сдаться?"))return;
   try { const updated=await api("/api/games/"+game.id+"/resign",{method:"POST"});applyGame(updated); }
   catch(e){toast(e.message);}
 }
@@ -320,8 +359,14 @@ function bindEvents() {
   }));
   $("match-button").addEventListener("click",()=>{ if (queueRequestPending) return; if (queueTimer) cancelQueue(); else startQueue(); });
   lockTimeOptions(false);
-  $("back-lobby").onclick=()=>{if(socket)socket.close();game=null;showView("home");};
+  $("back-lobby").onclick=()=>{
+    socketGeneration += 1;
+    if(socket){socket.onclose=null;socket.close();socket=null;}
+    game=null;
+    showView("home");
+  };
   $("draw-button").onclick=drawAction;
+  $("claim-draw-button").onclick=claimDrawAction;
   $("resign-button").onclick=resignAction;
   $("copy-link").onclick=async()=>{if(!game)return;const url=game.invite_url || (location.origin+location.pathname+"?game="+game.id);try{await navigator.clipboard.writeText(url);toast("Ссылка скопирована");}catch{toast(url);}};
 }
