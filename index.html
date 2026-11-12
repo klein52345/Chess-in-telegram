@@ -146,10 +146,18 @@
             <li><strong>Отправь ссылку другу.</strong><span>Друг открывает её, нажимает «Присоединиться» — и вы играете.</span></li>
           </ol>
           <p class="friend-note">Аккаунт Telegram не обязателен: можно играть гостем в браузере. Если ссылка открылась в Telegram, просто запусти игру через бота.</p>
+          <p class="friend-create-status" id="friend-create-status" role="status" aria-live="polite"></p>
           <div class="friend-dialog-actions">
             <button class="button ghost" id="friend-close" type="button">Пока нет</button>
             <button class="button primary" id="friend-create" type="button">Создать комнату →</button>
           </div>
+        </div>
+      </dialog>
+      <dialog class="loading-dialog" id="loading-dialog" aria-labelledby="loading-message">
+        <div class="loading-dialog-content">
+          <span class="loading-spinner" aria-hidden="true"></span>
+          <strong id="loading-message">Загружаем…</strong>
+          <span class="loading-caption">Пожалуйста, подожди</span>
         </div>
       </dialog>
       <div class="toast" id="toast" role="status"></div>
