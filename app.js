@@ -14,6 +14,7 @@ let socket = null;
 let socketGeneration = 0;
 let socketRetryDelay = 1000;
 let selectedTime = { seconds: 180, increment: 0 };
+let friendSelectedTime = { seconds: 180, increment: 0 };
 let queueTimer = null;
 let queueStartedAt = 0;
 let queueRequestPending = false;
@@ -144,11 +145,37 @@ async function loadProfile() {
 }
 function escapeHtml(value) { return String(value ?? "").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
 async function createGame() {
+  const button = $("friend-create");
+  const status = $("friend-create-status");
+  button.disabled = true;
+  button.textContent = "Создаём комнату…";
+  status.textContent = "Подключаемся к серверу и создаём приглашение. Не закрывай окно.";
+
   try {
-    const g = await api("/api/games", { method:"POST", body:JSON.stringify({initial_seconds:selectedTime.seconds,increment_seconds:selectedTime.increment,color:"random"}) });
-    await openGame(g.id);
-    if (g.status === "waiting") toast("Комната создана. Отправь ссылку сопернику.");
-  } catch(e) { toast(e.message); }
+    const g = await api("/api/games", {
+      method: "POST",
+      body: JSON.stringify({
+        initial_seconds: friendSelectedTime.seconds,
+        increment_seconds: friendSelectedTime.increment,
+        color: "random"
+      })
+    });
+    status.textContent = "Комната создана. Открываем шахматную доску…";
+    const opened = await openGame(g.id);
+    if (opened) {
+      $("friend-dialog").close();
+      toast("Комната создана. Скопируй ссылку и отправь другу.");
+    } else {
+      status.textContent = "Комната создана, но открыть её не удалось. Она сохранена в разделе «Открытые партии». Обнови список и попробуй открыть её оттуда.";
+      toast("Комната создана, но не удалось открыть партию.");
+    }
+  } catch (error) {
+    status.textContent = "Не удалось создать комнату: " + error.message;
+    toast("Ошибка создания комнаты: " + error.message);
+  } finally {
+    button.disabled = false;
+    button.textContent = "Создать комнату →";
+  }
 }
 async function joinGame(id) {
   try { await api("/api/games/"+id+"/join",{method:"POST"}); await openGame(id); }
@@ -156,15 +183,28 @@ async function joinGame(id) {
 }
 async function openGame(id) {
   try {
-    game = await api("/api/games/"+id);
-    if (game.status === "waiting" && game.white !== me.id && game.black !== me.id) game = await api("/api/games/"+id+"/join", { method:"POST" });
+    let openedGame = await api("/api/games/" + id);
+    if (openedGame.status === "waiting" && openedGame.white !== me.id && openedGame.black !== me.id) {
+      openedGame = await api("/api/games/" + id + "/join", { method: "POST" });
+    }
+    game = openedGame;
     chess = new Chess(game.fen === "start" ? undefined : game.fen);
-    displayWhiteMs = game.white_ms; displayBlackMs = game.black_ms; clockLastTick = Date.now();
+    displayWhiteMs = game.white_ms;
+    displayBlackMs = game.black_ms;
+    clockLastTick = Date.now();
     orientation = game.white === me.id ? "white" : "black";
-    selected = null; legalTargets = [];
-    showView("game"); renderGame(); connectSocket(id);
-    $("game-code").textContent = "GAME / "+id.slice(0,8).toUpperCase();
-  } catch(e) { toast(e.message); }
+    selected = null;
+    legalTargets = [];
+    showView("game");
+    renderGame();
+    connectSocket(id);
+    $("game-code").textContent = "GAME / " + id.slice(0, 8).toUpperCase();
+    return true;
+  } catch (error) {
+    console.error("Failed to open ChessTG game", { gameId: id, error });
+    toast("Не удалось открыть партию: " + error.message);
+    return false;
+  }
 }
 function connectSocket(id) {
   const generation = ++socketGeneration;
@@ -411,15 +451,29 @@ function bindEvents() {
   $("hero-create").onclick=openFriendDialog;
   $("mode-friend").onclick=openFriendDialog;
   $("friend-close").onclick=()=> $("friend-dialog").close();
-  $("friend-create").onclick=()=>{ $("friend-dialog").close(); createGame(); };
+  $("friend-create").onclick = () => {
+    if (!$("friend-create").disabled) createGame();
+  };
   $("friend-dialog").addEventListener("click",event=>{ if(event.target===$("friend-dialog")) $("friend-dialog").close(); });
   $("mode-open").onclick=()=>showView("games");
   $("refresh-games").onclick=()=>loadGames();
   $("games-refresh").onclick=()=>loadGames("games-list");
-  document.querySelectorAll(".time-option").forEach(b=>b.addEventListener("click",()=>{
-    document.querySelectorAll(".time-option").forEach(x=>{x.classList.remove("active");x.setAttribute("aria-pressed","false");});b.classList.add("active");b.setAttribute("aria-pressed","true");
-    selectedTime={seconds:Number(b.dataset.time),increment:Number(b.dataset.inc)};
-  }));
+  document.querySelectorAll(".time-options").forEach(group => {
+    group.querySelectorAll(".time-option").forEach(button => button.addEventListener("click", () => {
+      group.querySelectorAll(".time-option").forEach(option => {
+        option.classList.remove("active");
+        option.setAttribute("aria-pressed", "false");
+      });
+      button.classList.add("active");
+      button.setAttribute("aria-pressed", "true");
+      const control = {
+        seconds: Number(button.dataset.time),
+        increment: Number(button.dataset.inc)
+      };
+      if (group.classList.contains("friend-time-options")) friendSelectedTime = control;
+      else selectedTime = control;
+    }));
+  });
   $("match-button").addEventListener("click",()=>{ if (queueRequestPending) return; if (queueTimer) cancelQueue(); else startQueue(); });
   lockTimeOptions(false);
   $("back-lobby").onclick=()=>{
