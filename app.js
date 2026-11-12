@@ -63,12 +63,24 @@ function updateLoadingDialog() {
   if (!dialog.open) dialog.showModal();
 }
 async function api(path, options = {}) {
-  const response = await fetch(API + path, {
-    ...options,
-    headers: { "Content-Type": "application/json", ...(token ? { Authorization: "Bearer " + token } : {}), ...(options.headers || {}) }
-  });
+  let response;
+  try {
+    response = await fetch(API + path, {
+      ...options,
+      signal: options.signal || AbortSignal.timeout(25000),
+      headers: { "Content-Type": "application/json", ...(token ? { Authorization: "Bearer " + token } : {}), ...(options.headers || {}) }
+    });
+  } catch (error) {
+    if (error.name === "TimeoutError" || error.name === "AbortError") {
+      throw new Error("Сервер не ответил за 25 секунд. Попробуй ещё раз.");
+    }
+    throw new Error("Не удалось связаться с сервером. Проверь интернет и попробуй ещё раз.");
+  }
   const body = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(body.detail || "Ошибка запроса");
+  if (!response.ok) {
+    const detail = typeof body.detail === "string" ? body.detail : body.message;
+    throw new Error(detail || `Ошибка сервера: HTTP ${response.status}`);
+  }
   return body;
 }
 async function authenticate() {
@@ -138,6 +150,7 @@ async function loadGames(target = "home-games") {
   } catch (e) { $(target).innerHTML = '<div class="empty-state">Не удалось загрузить партии: '+escapeHtml(e.message)+'</div>'; }
 }
 async function loadLeaderboard() {
+  $("leaderboard").innerHTML = '<div class="loading-inline"><span class="loading-spinner" aria-hidden="true"></span><span>Загружаем рейтинг…</span></div>';
   try {
     const rows = await api("/api/leaderboard");
     $("leaderboard").innerHTML = rows.length ? rows.map((p,i)=>'<div class="leader-row"><div class="leader-rank">#'+(i+1)+'</div><div><div class="leader-name">'+escapeHtml(p.name)+'</div><div class="leader-sub">'+escapeHtml(p.username)+'</div></div><div class="leader-rating">'+p.rating+'</div><div class="leader-sub">'+p.games_played+' игр</div></div>').join("") : '<div class="empty-state">Рейтинг пока пуст — стань первым игроком!</div>';
@@ -391,8 +404,17 @@ async function squareClick(square) {
     const movePreview = legalTargets.find(m=>m.to===square);
     if (movePreview.promotion) promotion = (window.prompt("Превращение: q — ферзь, r — ладья, b — слон, n — конь","q")||"q").toLowerCase();
     const uci = selected+square+(movePreview.promotion?promotion:"");
-    try { const updated = await api("/api/games/"+game.id+"/moves",{method:"POST",body:JSON.stringify({uci})}); applyGame(updated); }
-    catch(e) { toast(e.message); const latest=await api("/api/games/"+game.id); applyGame(latest); }
+    const loading = beginLoading("Отправляем ход…");
+    try {
+      const updated = await api("/api/games/"+game.id+"/moves",{method:"POST",body:JSON.stringify({uci})});
+      applyGame(updated);
+    } catch(e) {
+      toast("Не удалось сделать ход: " + e.message);
+      try { const latest=await api("/api/games/"+game.id); applyGame(latest); }
+      catch(refreshError) { toast("Не удалось обновить партию: " + refreshError.message); }
+    } finally {
+      loading.close();
+    }
     return;
   }
   if (piece && piece.color===chess.turn()) {
@@ -478,26 +500,31 @@ async function cancelQueue(showError = true) {
 }
 async function drawAction() {
   if(!game)return;
+  const loading = beginLoading("Отправляем предложение ничьей…");
   try {
     const accepted=game.draw_offer_by && game.draw_offer_by!==me.id;
     const updated=await api("/api/games/"+game.id+"/draw",{method:"POST",body:JSON.stringify({accept:!!accepted})});
     applyGame(updated);toast(accepted?"Ничья принята":"Предложение ничьей отправлено");
   }catch(e){toast(e.message);}
+  finally { loading.close(); }
 }
 async function claimDrawAction() {
   if (!game || game.status !== "active") return;
+  const loading = beginLoading("Проверяем возможность ничьей…");
   try {
     const updated = await api("/api/games/"+game.id+"/claim-draw", {method:"POST"});
     applyGame(updated);
     toast("Ничья заявлена по правилам");
   } catch (e) {
     toast(e.message);
-  }
+  } finally { loading.close(); }
 }
 async function resignAction() {
   if(!game || game.status !== "active" || !confirm("Точно сдаться?"))return;
+  const loading = beginLoading("Завершаем партию…");
   try { const updated=await api("/api/games/"+game.id+"/resign",{method:"POST"});applyGame(updated); }
   catch(e){toast(e.message);}
+  finally { loading.close(); }
 }
 function bindEvents() {
   document.querySelectorAll("[data-view]").forEach(b=>b.addEventListener("click",()=>showView(b.dataset.view)));
