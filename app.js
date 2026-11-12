@@ -172,11 +172,13 @@ function connectSocket(id) {
     socket.onclose = null;
     socket.close();
   }
-  const url = API.replace(/^http/,"ws")+"/ws/games/"+id+"?token="+encodeURIComponent(token);
+  const url = API.replace(/^http/,"ws")+"/ws/games/"+id;
   const connection = new WebSocket(url);
   socket = connection;
   connection.onopen = () => {
-    if (generation === socketGeneration) socketRetryDelay = 1000;
+    if (generation !== socketGeneration) return;
+    socketRetryDelay = 1000;
+    connection.send(token);
   };
   connection.onmessage = event => {
     if (generation !== socketGeneration) return;
