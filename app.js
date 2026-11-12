@@ -17,6 +17,8 @@ let selectedTime = { seconds: 180, increment: 0 };
 let queueTimer = null;
 let queueStartedAt = 0;
 let queueRequestPending = false;
+let queueCancelRequested = false;
+let queuePollPending = false;
 let displayWhiteMs = 300000;
 let displayBlackMs = 300000;
 let clockLastTick = Date.now();
@@ -62,7 +64,10 @@ function showView(name) {
   if (name === "games") loadGames();
   if (name === "rating") loadLeaderboard();
   if (name === "profile") loadProfile();
-  if (queueTimer && name !== "play") cancelQueue();
+  if (name !== "play" && (queueTimer || queueRequestPending)) {
+    if (queueRequestPending) queueCancelRequested = true;
+    else cancelQueue();
+  }
 }
 function updateUser() {
   $("username").textContent = me?.name || "Гость";
@@ -305,6 +310,7 @@ async function squareClick(square) {
 async function startQueue() {
   if (queueRequestPending || queueTimer) return;
   queueRequestPending = true;
+  queueCancelRequested = false;
   lockTimeOptions(true);
   const button = $("match-button");
   button.disabled = true;
@@ -313,15 +319,23 @@ async function startQueue() {
     queueStartedAt = Date.now()/1000;
     const result = await api("/api/matchmaking",{method:"POST",body:JSON.stringify({initial_seconds:selectedTime.seconds,increment_seconds:selectedTime.increment})});
     if (result.status==="matched") { await openGame(result.game.id); return; }
+    if (queueCancelRequested) {
+      await api("/api/matchmaking", {method:"DELETE"});
+      resetQueueUi();
+      return;
+    }
     $("match-title").textContent = "Ищем соперника…";
     $("match-description").textContent = "Контроль времени зафиксирован на время поиска. Отмени поиск, чтобы изменить его.";
     button.textContent = "Отменить поиск";
     button.classList.remove("primary"); button.classList.add("secondary");
     queueTimer=setInterval(async()=>{
+      if (queuePollPending) return;
+      queuePollPending = true;
       try {
         const status=await api("/api/matchmaking?since="+queueStartedAt);
         if(status.status==="matched"){stopQueueTimer();toast("Соперник найден!");await openGame(status.game.id);}
       }catch(e){stopQueueTimer();toast(e.message);await cancelQueue(false);}
+      finally { queuePollPending = false; }
     },2200);
   } catch(e) {
     toast(e.message);
@@ -336,6 +350,18 @@ async function startQueue() {
   }
 }
 function stopQueueTimer() { if(queueTimer){clearInterval(queueTimer);queueTimer=null;} }
+function resetQueueUi() {
+  stopQueueTimer();
+  queueCancelRequested = false;
+  lockTimeOptions(false);
+  $("match-title").textContent="Готов к партии?";
+  $("match-description").textContent="Нажми кнопку — поиск начнётся сразу.";
+  const button = $("match-button");
+  button.disabled = false;
+  button.innerHTML='Найти соперника <span>→</span>';
+  button.classList.add("primary");
+  button.classList.remove("secondary");
+}
 async function cancelQueue(showError = true) {
   if (queueRequestPending) return;
   queueRequestPending = true;
@@ -347,11 +373,7 @@ async function cancelQueue(showError = true) {
   finally {
     queueRequestPending = false;
     button.disabled = false;
-    lockTimeOptions(false);
-    $("match-title").textContent="Готов к партии?";
-    $("match-description").textContent="Нажми кнопку — поиск начнётся сразу.";
-    button.innerHTML='Найти соперника <span>→</span>';
-    button.classList.add("primary"); button.classList.remove("secondary");
+    resetQueueUi();
   }
 }
 async function drawAction() {
