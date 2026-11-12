@@ -45,3 +45,5 @@
 .history-result.draw{color:#d5c58a}
 .history-open{padding:8px 11px;font-size:10px;white-space:nowrap}
 @media(max-width:760px){.profile-summary{gap:8px;margin:18px 0 25px}.profile-stat{padding:15px}.profile-stat strong{font-size:25px}.history-row{gap:8px;padding:11px 9px}.history-open{padding:7px 8px}.history-result{font-size:10px}.mobile-nav button{padding:3px 7px}}
+
+.friend-create-status{min-height:18px;margin:12px 0;color:#f0c978;font-size:12px;line-height:1.5}.friend-create-status:empty{display:none}#friend-create:disabled{opacity:.65;cursor:wait}
