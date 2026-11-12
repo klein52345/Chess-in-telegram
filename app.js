@@ -31,6 +31,37 @@ function toast(message) {
   const el = $("toast"); el.textContent = message; el.classList.add("show");
   clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove("show"), 2600);
 }
+const loadingOperations = new Map();
+let loadingSequence = 0;
+function beginLoading(message) {
+  const id = ++loadingSequence;
+  loadingOperations.set(id, message);
+  const dialog = $("loading-dialog");
+  if (dialog && !dialog.open) dialog.showModal();
+  updateLoadingDialog();
+  return {
+    update(nextMessage) {
+      if (!loadingOperations.has(id)) return;
+      loadingOperations.set(id, nextMessage);
+      updateLoadingDialog();
+    },
+    close() {
+      loadingOperations.delete(id);
+      updateLoadingDialog();
+    }
+  };
+}
+function updateLoadingDialog() {
+  const dialog = $("loading-dialog");
+  if (!dialog) return;
+  const messages = [...loadingOperations.values()];
+  if (!messages.length) {
+    if (dialog.open) dialog.close();
+    return;
+  }
+  $("loading-message").textContent = messages[messages.length - 1];
+  if (!dialog.open) dialog.showModal();
+}
 async function api(path, options = {}) {
   const response = await fetch(API + path, {
     ...options,
@@ -147,9 +178,10 @@ function escapeHtml(value) { return String(value ?? "").replace(/[&<>"']/g,c=>({
 async function createGame() {
   const button = $("friend-create");
   const status = $("friend-create-status");
+  const loading = beginLoading("Создаём партию…");
   button.disabled = true;
-  button.textContent = "Создаём комнату…";
-  status.textContent = "Подключаемся к серверу и создаём приглашение. Не закрывай окно.";
+  button.textContent = "Создаём…";
+  status.textContent = "Отправляем запрос серверу. Это может занять несколько секунд.";
 
   try {
     const g = await api("/api/games", {
@@ -160,28 +192,40 @@ async function createGame() {
         color: "random"
       })
     });
-    status.textContent = "Комната создана. Открываем шахматную доску…";
-    const opened = await openGame(g.id);
+    status.textContent = "Партия создана. Загружаем шахматную доску…";
+    loading.update("Партия создана. Загружаем доску…");
+    const opened = await openGame(g.id, { showLoading: false });
     if (opened) {
       $("friend-dialog").close();
-      toast("Комната создана. Скопируй ссылку и отправь другу.");
+      toast("Партия создана. Скопируй ссылку и отправь другу.");
     } else {
-      status.textContent = "Комната создана, но открыть её не удалось. Она сохранена в разделе «Открытые партии». Обнови список и попробуй открыть её оттуда.";
-      toast("Комната создана, но не удалось открыть партию.");
+      status.textContent = "Партия создана, но доска не открылась. Она доступна в разделе «Открытые партии».";
+      toast("Партия создана, но не удалось открыть доску.");
     }
   } catch (error) {
-    status.textContent = "Не удалось создать комнату: " + error.message;
-    toast("Ошибка создания комнаты: " + error.message);
+    status.textContent = "Не удалось создать партию: " + error.message;
+    toast("Ошибка создания партии: " + error.message);
   } finally {
+    loading.close();
     button.disabled = false;
-    button.textContent = "Создать комнату →";
+    button.textContent = "Создать партию →";
   }
 }
 async function joinGame(id) {
-  try { await api("/api/games/"+id+"/join",{method:"POST"}); await openGame(id); }
-  catch(e) { toast(e.message); await loadGames(); }
+  const loading = beginLoading("Присоединяемся к партии…");
+  try {
+    await api("/api/games/"+id+"/join",{method:"POST"});
+    loading.update("Загружаем шахматную доску…");
+    await openGame(id, { showLoading: false });
+  } catch(e) {
+    toast("Не удалось присоединиться: " + e.message);
+    await loadGames();
+  } finally {
+    loading.close();
+  }
 }
-async function openGame(id) {
+async function openGame(id, options = {}) {
+  const loading = options.showLoading === false ? null : beginLoading("Загружаем партию…");
   try {
     let openedGame = await api("/api/games/" + id);
     if (openedGame.status === "waiting" && openedGame.white !== me.id && openedGame.black !== me.id) {
@@ -204,6 +248,8 @@ async function openGame(id) {
     console.error("Failed to open ChessTG game", { gameId: id, error });
     toast("Не удалось открыть партию: " + error.message);
     return false;
+  } finally {
+    loading?.close();
   }
 }
 function connectSocket(id) {
@@ -489,9 +535,12 @@ function bindEvents() {
 }
 async function boot() {
   renderMiniBoard();bindEvents();setInterval(tickClocks,250);
+  const loading = beginLoading("Подключаемся к ChessTG…");
   try {
+    loading.update("Проверяем вход и загружаем профиль…");
     await authenticate();
     updateUser();
+    loading.update("Загружаем открытые партии…");
     await loadGames();
     const params = new URLSearchParams(location.search);
     const startParam = tg?.initDataUnsafe?.start_param || "";
@@ -506,6 +555,12 @@ async function boot() {
       else if (action === "rooms") showView("games");
       else if (action === "rating") showView("rating");
     }
-  } catch(e) { toast("Не удалось подключиться к серверу: "+e.message); $("home-games").innerHTML='<div class="empty-state">Сервер пока запускается. Обнови страницу через несколько секунд.</div>'; }
+  } catch(e) {
+    toast("Не удалось подключиться к серверу: "+e.message);
+    $("home-games").innerHTML='<div class="empty-state">Не удалось подключиться: '+escapeHtml(e.message)+' <button class="button secondary" id="retry-boot" type="button">Повторить</button></div>';
+    $("retry-boot")?.addEventListener("click", () => window.location.reload());
+  } finally {
+    loading.close();
+  }
 }
 boot();
