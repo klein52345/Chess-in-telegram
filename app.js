@@ -225,7 +225,10 @@ function renderGame() {
   $("draw-button").textContent = game.draw_offer_by && game.draw_offer_by !== me.id
     ? "Принять ничью"
     : game.draw_offer_by === me.id ? "Ожидаем ответ на ничью" : "Предложить ничью";
-  $("claim-draw-button").disabled = !active;
+  $("claim-draw-button").disabled = !active || !game.can_claim_draw;
+  $("claim-draw-button").title = game.can_claim_draw
+    ? "Заявить ничью по правилу троекратного повторения или 50 ходов"
+    : "Сейчас нет основания для заявления ничьей";
   $("resign-button").disabled = !active;
   renderBoard();
 }
