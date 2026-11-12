@@ -213,8 +213,9 @@ async function createGame() {
       $("friend-dialog").close();
       toast("Партия создана. Скопируй ссылку и отправь другу.");
     } else {
-      status.textContent = "Партия создана, но доска не открылась. Она доступна в разделе «Открытые партии».";
-      toast("Партия создана, но не удалось открыть доску.");
+      status.textContent = "Партия создана, но доска не открылась. Обновляем список открытых партий…";
+      await loadGames();
+      toast("Партия создана, но не удалось открыть доску. Она добавлена в открытые партии.");
     }
   } catch (error) {
     status.textContent = "Не удалось создать партию: " + error.message;
@@ -532,11 +533,16 @@ function bindEvents() {
   const openFriendDialog = () => { const dialog=$("friend-dialog"); if(dialog?.showModal) dialog.showModal(); else toast("Открой страницу игры и создай комнату."); };
   $("hero-create").onclick=openFriendDialog;
   $("mode-friend").onclick=openFriendDialog;
-  $("friend-close").onclick=()=> $("friend-dialog").close();
+  $("friend-close").onclick=()=> { if (!$("friend-create").disabled) $("friend-dialog").close(); };
+  $("friend-dialog").addEventListener("cancel", event => {
+    if ($("friend-create").disabled) event.preventDefault();
+  });
   $("friend-create").onclick = () => {
     if (!$("friend-create").disabled) createGame();
   };
-  $("friend-dialog").addEventListener("click",event=>{ if(event.target===$("friend-dialog")) $("friend-dialog").close(); });
+  $("friend-dialog").addEventListener("click",event=>{
+    if(event.target===$("friend-dialog") && !$("friend-create").disabled) $("friend-dialog").close();
+  });
   $("mode-open").onclick=()=>showView("games");
   $("refresh-games").onclick=()=>loadGames();
   $("games-refresh").onclick=()=>loadGames("games-list");
