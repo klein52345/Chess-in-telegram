@@ -92,7 +92,10 @@ async function loadGames(target = "home-games") {
     const el = $(target);
     if (!rows.length) { el.innerHTML = '<div class="empty-state">Пока никто не ждёт соперника. Создай первую партию!</div>'; if ($("games-count")) $("games-count").textContent = "0 открытых партий"; return; }
     if ($("games-count")) $("games-count").textContent = rows.length + " открытых партий";
-    el.innerHTML = rows.map(g => '<div class="game-row"><div class="game-row-icon">♟</div><div class="game-row-info"><strong>Игрок '+(g.white || g.black || "Guest").slice(0,8)+'</strong><span>'+escapeHtml(timeControlLabel(g.initial_ms, g.increment_ms))</span></div><button class="button secondary" data-join="'+g.id+'">Играть</button></div>').join("");
+    el.innerHTML = rows.map(g => {
+      const creator = escapeHtml((g.white || g.black || "Guest").slice(0, 8));
+      return `<div class="game-row"><div class="game-row-icon">♟</div><div class="game-row-info"><strong>Игрок ${creator}</strong><span>${escapeHtml(timeControlLabel(g.initial_ms, g.increment_ms))}</span></div><button class="button secondary" data-join="${escapeHtml(g.id)}">Играть</button></div>`;
+    }).join("");
     el.querySelectorAll("[data-join]").forEach(b => b.addEventListener("click",()=>joinGame(b.dataset.join)));
   } catch (e) { $(target).innerHTML = '<div class="empty-state">Не удалось загрузить партии: '+escapeHtml(e.message)+'</div>'; }
 }
