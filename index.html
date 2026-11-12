@@ -23,6 +23,7 @@
       <button class="nav-item" data-view="play"><span>♟</span> Быстрая игра</button>
       <button class="nav-item" data-view="games"><span>▦</span> Открытые партии</button>
       <button class="nav-item" data-view="rating"><span>♜</span> Рейтинг</button>
+      <button class="nav-item" data-view="profile"><span>♙</span> Мой профиль</button>
       <div class="sidebar-bottom">
         <div class="online-dot"></div><span>ChessTG beta</span><span class="version">v1.0</span>
       </div>
@@ -94,6 +95,16 @@
         <div class="leaderboard" id="leaderboard"><div class="empty-state">Загрузка рейтинга…</div></div>
       </section>
 
+      <section id="profile-view" class="view">
+        <div class="page-heading"><div class="eyebrow">ТВОЙ АККАУНТ</div><h1>Мой профиль</h1><p>Статистика и последние партии.</p></div>
+        <div class="profile-summary">
+          <div class="profile-stat"><span>РЕЙТИНГ</span><strong id="profile-rating">1200</strong></div>
+          <div class="profile-stat"><span>СЫГРАНО ПАРТИЙ</span><strong id="profile-games">0</strong></div>
+        </div>
+        <div class="section-heading compact"><div><div class="eyebrow">ИСТОРИЯ</div><h2>Последние партии</h2></div></div>
+        <div class="history-list" id="profile-history"><div class="empty-state">Загружаем историю…</div></div>
+      </section>
+
       <section id="game-view" class="view game-view">
         <div class="game-topline"><button class="text-button" id="back-lobby">← Назад</button><span class="game-code" id="game-code"></span><button class="text-button" id="copy-link">Скопировать ссылку ↗</button></div>
         <div class="game-layout">
@@ -149,6 +160,7 @@
     <button data-view="play"><span>♟</span>Играть</button>
     <button data-view="games"><span>▦</span>Партии</button>
     <button data-view="rating"><span>♜</span>Рейтинг</button>
+    <button data-view="profile"><span>♙</span>Профиль</button>
   </nav>
 </body>
 </html>
