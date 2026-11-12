@@ -61,6 +61,7 @@ function showView(name) {
   document.querySelectorAll("[data-view]").forEach(b => b.classList.toggle("active", b.dataset.view === name));
   if (name === "games") loadGames();
   if (name === "rating") loadLeaderboard();
+  if (name === "profile") loadProfile();
   if (queueTimer && name !== "play") cancelQueue();
 }
 function updateUser() {
@@ -100,6 +101,38 @@ async function loadLeaderboard() {
     const rows = await api("/api/leaderboard");
     $("leaderboard").innerHTML = rows.length ? rows.map((p,i)=>'<div class="leader-row"><div class="leader-rank">#'+(i+1)+'</div><div><div class="leader-name">'+escapeHtml(p.name)+'</div><div class="leader-sub">'+escapeHtml(p.username)+'</div></div><div class="leader-rating">'+p.rating+'</div><div class="leader-sub">'+p.games_played+' игр</div></div>').join("") : '<div class="empty-state">Рейтинг пока пуст — стань первым игроком!</div>';
   } catch (e) { $("leaderboard").innerHTML = '<div class="empty-state">'+escapeHtml(e.message)+'</div>'; }
+}
+async function loadProfile() {
+  const history = $("profile-history");
+  history.innerHTML = '<div class="empty-state">Загружаем историю…</div>';
+  try {
+    const [profile, games] = await Promise.all([
+      api("/api/me"),
+      api("/api/games/history?limit=30")
+    ]);
+    me = profile;
+    updateUser();
+    $("profile-rating").textContent = profile.rating;
+    $("profile-games").textContent = profile.games_played;
+    if (!games.length) {
+      history.innerHTML = '<div class="empty-state">Здесь появятся завершённые партии.</div>';
+      return;
+    }
+    history.innerHTML = games.map(g => {
+      const opponent = g.white === me.id ? g.black : g.white;
+      const won = (g.result === "1-0" && g.white === me.id) || (g.result === "0-1" && g.black === me.id);
+      const draw = g.result === "1/2-1/2";
+      const outcome = draw ? "Ничья" : won ? "Победа" : "Поражение";
+      const date = g.created_at ? new Date(g.created_at * 1000).toLocaleDateString("ru-RU") : "";
+      const opponentLabel = opponent ? "Игрок " + opponent.slice(0, 8) : "Соперник";
+      return '<div class="history-row"><div class="history-main"><strong>'+escapeHtml(opponentLabel)+'</strong><span>'+escapeHtml(timeControlLabel(g.initial_ms, g.increment_ms))+' · '+escapeHtml(date)+'</span></div><span class="history-result '+(draw?"draw":won?"win":"loss")+'">'+outcome+'</span><button class="button secondary history-open" data-history-game="'+escapeHtml(g.id)+'">Открыть</button></div>';
+    }).join("");
+    history.querySelectorAll("[data-history-game]").forEach(button => {
+      button.addEventListener("click", () => openGame(button.dataset.historyGame));
+    });
+  } catch (error) {
+    history.innerHTML = '<div class="empty-state">Не удалось загрузить профиль: '+escapeHtml(error.message)+'</div>';
+  }
 }
 function escapeHtml(value) { return String(value ?? "").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
 async function createGame() {
