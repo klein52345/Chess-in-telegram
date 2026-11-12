@@ -124,9 +124,10 @@ function lockTimeOptions(locked) {
   document.querySelectorAll(".time-options").forEach(options => options.classList.toggle("locked", locked));
 }
 async function loadGames(target = "home-games") {
+  const el = $(target);
+  if (el) el.innerHTML = '<div class="loading-inline"><span class="loading-spinner" aria-hidden="true"></span><span>Загружаем открытые партии…</span></div>';
   try {
     const rows = await api("/api/games?status=waiting");
-    const el = $(target);
     if (!rows.length) { el.innerHTML = '<div class="empty-state">Пока никто не ждёт соперника. Создай первую партию!</div>'; if ($("games-count")) $("games-count").textContent = "0 открытых партий"; return; }
     if ($("games-count")) $("games-count").textContent = rows.length + " открытых партий";
     el.innerHTML = rows.map(g => {
@@ -404,13 +405,20 @@ async function startQueue() {
   queueCancelRequested = false;
   lockTimeOptions(true);
   const button = $("match-button");
+  const loading = beginLoading("Подключаемся к поиску соперника…");
   button.disabled = true;
   button.textContent = "Подключаемся…";
   try {
     queueStartedAt = Date.now()/1000;
     const result = await api("/api/matchmaking",{method:"POST",body:JSON.stringify({initial_seconds:selectedTime.seconds,increment_seconds:selectedTime.increment})});
-    if (result.status==="matched") { await openGame(result.game.id); return; }
+    if (result.status==="matched") {
+      loading.update("Соперник найден. Загружаем партию…");
+      loading.close();
+      await openGame(result.game.id);
+      return;
+    }
     if (queueCancelRequested) {
+      loading.update("Отменяем поиск…");
       await api("/api/matchmaking", {method:"DELETE"});
       resetQueueUi();
       return;
@@ -435,6 +443,7 @@ async function startQueue() {
     button.innerHTML = 'Найти соперника <span>→</span>';
     button.classList.add("primary"); button.classList.remove("secondary");
   } finally {
+    loading.close();
     queueRequestPending = false;
     button.disabled = false;
     lockTimeOptions(Boolean(queueTimer));
